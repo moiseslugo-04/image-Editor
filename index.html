@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        background-color: #7746;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      label {
+        display: block;
+      }
+      .buttons-editor {
+        width: 400;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+      .options {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      canvas {
+        border: 2px solid #884;
+      }
+    </style>
+    <title>Document</title>
+  </head>
+  <body>
+    <h1>Image Editor 📷🖋</h1>
+    <div class="options">
+      <label>
+        Select your photo to edit
+        <input type="file" />
+      </label>
+      <label> download image <button>Download</button></label>
+    </div>
+    <canvas width="400" height="500"></canvas>
+    <div class="buttons-editor">
+      <label for="">
+        Grayscale
+        <input type="range" name="grayscale"
+      /></label>
+      <label for="">
+        Blur
+        <input type="range" name="blur"
+      /></label>
+      <label for="">
+        Invert
+        <input type="range" name="invert"
+      /></label>
+    </div>
+  </body>
+</html>
