@@ -5,76 +5,88 @@ const image = document.getElementById('image')
 const inputs = document.querySelectorAll('input[type="range"]')
 const btnDownload = document.getElementById('download')
 const options = {
-  grayscale: Grayscale,
-  blur: Blur,
-  invert: Invert,
+  grayscale: applyGrayscale,
+  blur: applyBlur,
+  invert: applyInvert,
 }
-let filter = undefined
-let nameFile = undefined
-// <== Getting Input's Value and Reading ==>
+const currentValues = {
+  grayscale: 0,
+  blur: 0,
+  invert: 0,
+}
+let currentFilter = undefined
+let imageName = undefined
 inputFile.addEventListener('change', handleImageUpload)
+inputs.forEach((range) =>
+  range.addEventListener('input', () => handleRangeInput(range))
+)
+//drag adn drop events
+canvas.addEventListener('dragover', (e) => e.preventDefault())
+canvas.addEventListener('dragenter', (e) => handleDragEnter)
+canvas.addEventListener('dragleave', (e) => handleDragLeave)
+canvas.addEventListener('drop', (e) => handleDrop)
+// <== Getting Input's Value and Reading ==>
 function handleImageUpload({ target: { files } }) {
   const file = files[0]
-  nameFile = file.name
+  imageName = file.name
   const reader = new FileReader()
-  reader.addEventListener('load', ({ target: { result: url } }) => {
-    image.src = url
-  })
+  reader.onload = ({ target: { result: url } }) => (image.src = url)
   reader.readAsDataURL(file)
 }
 // <== Filter Options ==>
-inputs.forEach((range) => {
-  range.addEventListener('input', () => {
-    let key = range.getAttribute('name')
-    if (options[key]) {
-      filter = [key, range.value]
-      applyFilter()
-    }
-  })
-})
-// <== Drawing image  ==>
-image.addEventListener('load', () => {
-  canvas.width = image.width > 370 ? 360 : image.width
-  canvas.height = image.height > 420 ? 420 : image.width
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-  applyFilter()
-})
+function handleRangeInput(range) {
+  let key = range.getAttribute('name')
+  if (options[key]) {
+    currentFilter = { key, value: parseInt(range.value) }
+    applyFilters()
+  }
+}
+
 // <== Drag and Drop  ==>
 canvas.draggable = true
-canvas.addEventListener('dragover', (e) => e.preventDefault())
-canvas.addEventListener('dragenter', (e) => {
+function handleDragEnter(e) {
   e.preventDefault()
   canvas.style.borderColor = '#929225'
-})
-canvas.addEventListener('dragleave', (e) => {
+}
+function handleDragLeave(e) {
   canvas.style.borderColor = '#570b0b'
-})
-canvas.addEventListener('drop', (e) => {
+}
+function handleDrop(e) {
   e.preventDefault()
   canvas.style.borderColor = '#8d8d40'
-  const {
-    dataTransfer: { files },
-  } = e
-  const file = files[0]
+  const file = e.dataTransfer.files[0]
+  if (!file) return
   const reader = new FileReader()
-
-  reader.addEventListener('load', ({ target: { result: url } }) => {
-    image.src = url
-  })
+  reader.onload = ({ target: { result: url } }) => (image.src = url)
   reader.readAsDataURL(file)
-})
-// <== filters  ==>
-function applyFilter() {
-  if (!filter || image.src.length < 0) return
+}
+
+// <== Drawing image  ==>
+image.addEventListener('load', () => {
+  canvas.width = Math.min(image.width, 360)
+  canvas.height = Math.min(image.height, 420)
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const [key, value] = filter
-  if (options[key]) {
-    options[key](imageData, value)
+  applyFilters()
+})
+
+// <== filters  ==>
+function applyFilters() {
+  if (image.src) {
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+    Object.keys(currentValues).forEach((key) => {
+      const value = currentValues[key]
+      if (value !== 0 && options[key]) {
+        imageData = options[key](imageData, value)
+      }
+    })
+
     ctx.putImageData(imageData, 0, 0)
   }
 }
-function Grayscale(imageData, value) {
+
+function applyGrayscale(imageData, value) {
   const { data } = imageData
   for (let i = 0; i < data.length; i += 4) {
     const gray = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11
@@ -84,17 +96,26 @@ function Grayscale(imageData, value) {
   }
   return imageData
 }
-function Blur(_, value) {
-  console.log(value)
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.filter = `blur(${value}px)`
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+function applyBlur(imageData, value) {
+  // Create a temporary canvas to apply the blur filter
+  const tempCanvas = document.createElement('canvas')
+  const tempCtx = tempCanvas.getContext('2d')
+  tempCanvas.width = canvas.width
+  tempCanvas.height = canvas.height
+  tempCtx.putImageData(imageData, 0, 0)
+  tempCtx.filter = `blur(${value}px)`
+  tempCtx.drawImage(tempCanvas, 0, 0)
+  return tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
 }
-function Invert(_, value) {
-  console.log(value)
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.filter = `invert(${value}%)`
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+function applyInvert(imageData, value) {
+  const { data } = imageData
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 255 - data[i] * (value / 100)
+    data[i + 1] = 255 - data[i + 1] * (value / 100)
+    data[i + 2] = 255 - data[i + 2] * (value / 100)
+  }
+  return imageData
 }
 
 // <== download Image ==>
@@ -102,6 +123,6 @@ btnDownload.addEventListener('click', () => {
   const link = document.createElement('a')
   console.log(inputFile.target)
   link.href = canvas.toDataURL()
-  link.download = `${nameFile}-edited.png`
+  link.download = `${imageName}-edited.png`
   link.click()
 })
